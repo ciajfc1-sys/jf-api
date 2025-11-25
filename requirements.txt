@@ -1,0 +1,7 @@
+flask
+flask-cors
+google-cloud-bigquery
+google-auth
+google-auth-httplib2
+google-auth-oauthlib
+python-dotenv
