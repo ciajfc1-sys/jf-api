@@ -5,6 +5,8 @@ from flask_cors import CORS
 from google.cloud import bigquery
 from google.oauth2 import service_account
 from dotenv import load_dotenv
+import json
+
 
 # ========= .env (na MESMA pasta do api.py) =========
 # GCP_PROJECT_ID=bd-cia-jf-citrus
@@ -16,15 +18,36 @@ load_dotenv()
 PROJECT_ID = os.environ["GCP_PROJECT_ID"]
 LOCATION   = os.environ["BQ_LOCATION"]
 DATASET    = os.environ["BQ_DATASET"]
-KEY_JSON   = os.environ["GCP_KEY_JSON_BIG_QUERY"]
+#KEY_JSON   = os.environ["GCP_KEY_JSON_BIG_QUERY"]
+
+# ========= BigQuery =========
+#creds = service_account.Credentials.from_service_account_file(KEY_JSON)
+#bq    = bigquery.Client(project=PROJECT_ID, credentials=creds, location=LOCATION)
+
+# Caminho do JSON (modo local) e/ou conteúdo do JSON (modo cloud)
+KEY_JSON_PATH = os.environ.get("GCP_KEY_JSON_BIG_QUERY")
+SERVICE_ACCOUNT_JSON = os.environ.get("GCP_SERVICE_ACCOUNT_JSON")
+
+# ========= BigQuery =========
+if SERVICE_ACCOUNT_JSON:
+    # Produção (Render): credenciais vêm em uma env var com o JSON inteiro
+    info = json.loads(SERVICE_ACCOUNT_JSON)
+    creds = service_account.Credentials.from_service_account_info(info)
+elif KEY_JSON_PATH:
+    # Desenvolvimento local: continua usando o caminho do arquivo no Windows
+    creds = service_account.Credentials.from_service_account_file(KEY_JSON_PATH)
+else:
+    raise RuntimeError(
+        "Configure GCP_SERVICE_ACCOUNT_JSON (JSON inteiro) "
+        "ou GCP_KEY_JSON_BIG_QUERY (caminho do arquivo)."
+    )
+
+bq = bigquery.Client(project=PROJECT_ID, credentials=creds, location=LOCATION)
+
 
 # ========= KML =========
 # Mantém o mesmo esquema que você já usou: DADOS\kml\...
 KML_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "kml")
-
-# ========= BigQuery =========
-creds = service_account.Credentials.from_service_account_file(KEY_JSON)
-bq    = bigquery.Client(project=PROJECT_ID, credentials=creds, location=LOCATION)
 
 def fq(table_or_view: str) -> str:
     """Retorna nome totalmente qualificado com crase para BigQuery."""
